@@ -1,6 +1,7 @@
 # encoding: utf-8
 
 from datetime import datetime
+import pytz
 
 from django.db import models
 from django.conf import settings
@@ -70,7 +71,8 @@ class LockableModel(models.Model):
         Works by calculating if the last lock (self.locked_at) has timed out or not.
         """
         if isinstance(self.locked_at, datetime):
-            if (datetime.today() - self.locked_at).seconds < LOCK_TIMEOUT:
+            if (pytz.utc.localize(
+                datetime.today()) - self.locked_at).seconds < LOCK_TIMEOUT:
                 return True
             else:
                 return False
@@ -88,7 +90,8 @@ class LockableModel(models.Model):
         If you want to extend a lock beyond its current expiry date, initiate a new
         lock using the ``lock_for`` method.
         """
-        return LOCK_TIMEOUT - (datetime.today() - self.locked_at).seconds
+        return LOCK_TIMEOUT - (pytz.utc.localize(
+            datetime.today()) - self.locked_at).seconds
     
     def lock_for(self, user, hard_lock=False):
         """
@@ -112,7 +115,7 @@ class LockableModel(models.Model):
             raise ObjectLockedError("This object is already locked by another user. \
                 May not override, except through the `unlock` method.")
         else:
-            self._locked_at = datetime.today()
+            self._locked_at = pytz.utc.localize(datetime.today())
             self._locked_by = user
             self._hard_lock = self.__init_hard_lock = hard_lock
             date = self.locked_at.strftime("%H:%M:%S")
